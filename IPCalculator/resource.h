@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by Resource.rc
 //
+#define IDD_DIALOG_MAIN                 101
 #define IDD_DIALOG                      101
 #define IDC_STATIC_IP_MASK              1001
 #define IDC_STATIC_IP_ADDRESS           1002
