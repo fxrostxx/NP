@@ -11,6 +11,8 @@
 #define IDC_EDIT_PREFIX                 1005
 #define IDC_SPIN_PREFIX                 1008
 #define IDC_STATIC_FRAME                1009
+#define IDC_STATIC_IP_MASK2             1012
+#define IDC_STATIC_PREFIX               1012
 
 // Next default values for new objects
 // 
