@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by Resource.rc
 //
+#define IDC_BUTTON_RESET                9
 #define IDD_DIALOG_MAIN                 101
 #define IDD_DIALOG                      101
 #define IDC_STATIC_IP_MASK              1001
@@ -11,7 +12,7 @@
 #define IDC_EDIT_PREFIX                 1005
 #define IDC_SPIN_PREFIX                 1008
 #define IDC_STATIC_FRAME                1009
-#define IDC_STATIC_IP_MASK2             1012
+#define IDC_STATIC_INFO                 1011
 #define IDC_STATIC_PREFIX               1012
 
 // Next default values for new objects
@@ -20,7 +21,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        103
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1010
+#define _APS_NEXT_CONTROL_VALUE         1012
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
