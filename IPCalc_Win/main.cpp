@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <CommCtrl.h>
 #include <iostream>
+#include <bitset>
 #include "resource.h"
 
 BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -21,6 +22,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	HWND hIPAddress = GetDlgItem(hwnd, IDC_IP_ADDRESS);
 	HWND hIPMask = GetDlgItem(hwnd, IDC_IP_MASK);
 	HWND hIPPrefix = GetDlgItem(hwnd, IDC_EDIT_PREFIX);
+	HWND hStaticInfo = GetDlgItem(hwnd, IDC_STATIC_INFO);
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
@@ -85,6 +87,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			SendMessage(hIPAddress, IPM_CLEARADDRESS, 0, 0);
 			SendMessage(hIPMask, IPM_CLEARADDRESS, 0, 0);
 			SendMessage(hIPPrefix, WM_SETTEXT, 0, (LPARAM)"");
+			SendMessage(hStaticInfo, WM_SETTEXT, 0, (LPARAM)"");
 			break;
 		}
 		case IDOK: PrintInfo(hwnd); break;
@@ -120,23 +123,29 @@ LPSTR FormatCount(CHAR szBuffer[], CONST CHAR szMessage[], DWORD dwCount)
 }
 LPSTR FormatAddress(CHAR szBuffer[], CONST CHAR szMessage[], DWORD dwIPAddress)
 {
+	std::string sIPAddress = std::bitset<32>(dwIPAddress).to_string();
+	for (int i = 24; i > 0; i -= 8) sIPAddress.insert(i, ".");
+	char* sIPAddress_cstr = new char[sIPAddress.size() + 1];
+	strcpy(sIPAddress_cstr, sIPAddress.c_str());
 	sprintf
 	(
 		szBuffer,
-		"%s%i.%i.%i.%i",
+		"%s%i.%i.%i.%i %s",
 		szMessage,
 		FIRST_IPADDRESS(dwIPAddress),
 		SECOND_IPADDRESS(dwIPAddress),
 		THIRD_IPADDRESS(dwIPAddress),
-		FOURTH_IPADDRESS(dwIPAddress)
+		FOURTH_IPADDRESS(dwIPAddress),
+		sIPAddress_cstr
 	);
+	delete[] sIPAddress_cstr;
 	return szBuffer;
 }
 VOID PrintInfo(HWND hwnd)
 {
 	HWND hIPAddress = GetDlgItem(hwnd, IDC_IP_ADDRESS);
 	HWND hIPMask = GetDlgItem(hwnd, IDC_IP_MASK);
-	HWND HStaticInfo = GetDlgItem(hwnd, IDC_STATIC_INFO);
+	HWND hStaticInfo = GetDlgItem(hwnd, IDC_STATIC_INFO);
 	DWORD dwIPAddress = 0;
 	DWORD dwIPMask = 0;
 	SendMessage(hIPAddress, IPM_GETADDRESS, 0, (LPARAM)&dwIPAddress);
@@ -159,5 +168,5 @@ VOID PrintInfo(HWND hwnd)
 		FormatCount(szIPCount, "Amount of IP addresses: ", dwIPCount),
 		FormatCount(szHostCount, "Amount of Host addresses: ", dwHostCount)
 	);
-	SendMessage(HStaticInfo, WM_SETTEXT, 0, (LPARAM)szInfo);
+	SendMessage(hStaticInfo, WM_SETTEXT, 0, (LPARAM)szInfo);
 }
