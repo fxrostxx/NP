@@ -70,34 +70,32 @@ int main()
 
 	CHAR sendBuffer[BUFFER_LENGTH] = "Hello Server";
 	CHAR recvBuffer[BUFFER_LENGTH] = {};
-	iResult = send(connectSocket, sendBuffer, strlen(sendBuffer), 0);
-	if (iResult == SOCKET_ERROR)
-	{
-		cout << "Send failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
-		closesocket(connectSocket);
-		freeaddrinfo(result);
-		WSACleanup();
-		return 0;
-	}
-	cout << "Bytes sent: " << iResult << endl;
-
 	do
 	{
+		iResult = send(connectSocket, sendBuffer, strlen(sendBuffer), 0);
+		if (iResult == SOCKET_ERROR)
+		{
+			cout << "Send failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+			closesocket(connectSocket);
+			freeaddrinfo(result);
+			WSACleanup();
+			return 0;
+		}
+		cout << "Bytes sent: " << iResult << endl;
+
 		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
 		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
 		else if (iResult == 0) cout << "Connection closed" << endl;
 		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
-	} while (iResult > 0);
+		cin.getline(sendBuffer, BUFFER_LENGTH);
+	} while (strcmp(sendBuffer, "exit") != 0);
 
 	iResult = shutdown(connectSocket, SD_BOTH);
-	if (iResult == SOCKET_ERROR)
-	{
-		cout << "Shutdown failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
-		closesocket(connectSocket);
-		freeaddrinfo(result);
-		WSACleanup();
-		return 0;
-	}
+	if (iResult == SOCKET_ERROR) cout << "Shutdown failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+
+	closesocket(connectSocket);
+	freeaddrinfo(result);
+	WSACleanup();
 
 	return 0;
 }
