@@ -22,8 +22,10 @@ using namespace std;
 int main()
 {
 	setlocale(LC_ALL, "");
+	SetConsoleCP(1251);
 
 	cout << "CLIENT" << endl;
+
 	CHAR szError[256] = {};
 
 	WSADATA wsaData;
@@ -41,7 +43,7 @@ int main()
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo("127.0.0.1", PORT, &hints, &result);
+	iResult = getaddrinfo("192.168.1.91", PORT, &hints, &result);
 	if (iResult != 0)
 	{
 		cout << "getaddrinfo failed: " << iResult << endl;
@@ -84,7 +86,11 @@ int main()
 		cout << "Bytes sent: " << iResult << endl;
 
 		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
-		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
+		if (iResult > 0)
+		{
+			recvBuffer[iResult] = '\0';
+			cout << recvBuffer << " (" << iResult << " bytes)" << endl;
+		}
 		else if (iResult == 0) cout << "Connection closed" << endl;
 		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
 		cin.getline(sendBuffer, BUFFER_LENGTH);

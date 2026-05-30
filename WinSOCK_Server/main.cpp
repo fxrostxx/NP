@@ -1,12 +1,16 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // !WIN32_LEAN_AND_MEAN
 
 #include <iostream>
+#include <fstream>
 #include <Windows.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
+#include <ctime>
 #include <FormatLastError.h>
 
 using namespace std;
@@ -21,8 +25,14 @@ using namespace std;
 int main()
 {
 	setlocale(LC_ALL, "");
+	SetConsoleCP(1251);
+
+	const string filename = "output.txt";
+	ofstream fout(filename);
 
 	cout << "SERVER" << endl;
+	fout << "SERVER" << endl;
+
 	DWORD dwError = 0;
 	CHAR szError[256] = {};
 
@@ -32,6 +42,7 @@ int main()
 	if (iResult != 0)
 	{
 		cout << "WSAStartup failed. " << FormatLastError(dwError, szError) << iResult << endl;
+		fout << "WSAStartup failed. " << FormatLastError(dwError, szError) << iResult << endl;
 		return 0;
 	}
 
@@ -48,6 +59,7 @@ int main()
 	if (iResult != 0)
 	{
 		cout << "getaddrinfo failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "getaddrinfo failed. " << FormatLastError(dwError, szError) << endl;
 		WSACleanup();
 		return 0;
 	}
@@ -57,6 +69,7 @@ int main()
 	if (listenSocket == INVALID_SOCKET)
 	{
 		cout << "Socket creation error. " << FormatLastError(dwError, szError) << endl;
+		fout << "Socket creation error. " << FormatLastError(dwError, szError) << endl;
 		freeaddrinfo(result);
 		WSACleanup();
 		return 0;
@@ -66,7 +79,8 @@ int main()
 	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR)
 	{
-		cout << "Bind failed: " << FormatLastError(dwError, szError) << endl;
+		cout << "Bind failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "Bind failed. " << FormatLastError(dwError, szError) << endl;
 		closesocket(listenSocket);
 		freeaddrinfo(result);
 		WSACleanup();
@@ -77,16 +91,36 @@ int main()
 	if (listen(listenSocket, MAX_CONNECTIONS) == SOCKET_ERROR)
 	{
 		dwError = WSAGetLastError();
-		cout << "Listen failed: " << FormatLastError(dwError, szError) << endl;
+		cout << "Listen failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "Listen failed. " << FormatLastError(dwError, szError) << endl;
 		closesocket(listenSocket);
 		freeaddrinfo(result);
 		WSACleanup();
 		return 0;
 	}
 
-	SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+	struct sockaddr_in clientAddr;
+	int addrLen = sizeof(clientAddr);
+	SOCKET clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &addrLen);
 	dwError = WSAGetLastError();
-	if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
+	if (clientSocket == INVALID_SOCKET)
+	{
+		cout << "Accept failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "Accept failed. " << FormatLastError(dwError, szError) << endl;
+	}
+	else
+	{
+		CHAR clientIP[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, INET_ADDRSTRLEN);
+		int clientPort = ntohs(clientAddr.sin_port);
+		time_t now = time(nullptr);
+		struct tm timeinfo;
+		localtime_s(&timeinfo, &now);
+		CHAR timeStr[64];
+		sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+		cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+		fout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+	}
 
 	CHAR recvBuffer[BUFFER_LENGTH] = {};
 	CHAR sendBuffer[BUFFER_LENGTH] = {};
@@ -97,34 +131,55 @@ int main()
 		dwError = WSAGetLastError();
 		if (iResult > 0)
 		{
+			recvBuffer[iResult] = '\0';
 			cout << recvBuffer << " (" << strlen(recvBuffer) << " bytes)" << endl;
-			iSendResult = send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
+			fout << recvBuffer << " (" << strlen(recvBuffer) << " bytes)" << endl;
+			iSendResult = send(clientSocket, recvBuffer, iResult, 0);
 			dwError = WSAGetLastError();
 			if (iSendResult == SOCKET_ERROR)
 			{
-				cout << "Send failed: " << FormatLastError(dwError, szError) << endl;
+				cout << "Send failed. " << FormatLastError(dwError, szError) << endl;
+				fout << "Send failed. " << FormatLastError(dwError, szError) << endl;
 				closesocket(clientSocket);
 			}
-			else cout << "Bytes sent: " << iSendResult << endl;
+			else
+			{
+				cout << "Bytes sent: " << iSendResult << endl;
+				fout << "Bytes sent: " << iSendResult << endl;
+			}
 		}
-		else if (iResult == 0) cout << "Connection closing" << endl;
+		else if (iResult == 0)
+		{
+			cout << "Connection closing" << endl;
+			fout << "Connection closing" << endl;
+		}
 		else
 		{
-			cout << "Receive failed: " << FormatLastError(dwError, szError) << endl;
+			cout << "Receive failed. " << FormatLastError(dwError, szError) << endl;
+			fout << "Receive failed. " << FormatLastError(dwError, szError) << endl;
 			closesocket(clientSocket);
 		}
 	} while (iResult > 0);
 
 	iResult = shutdown(clientSocket, SD_BOTH);
 	dwError = WSAGetLastError();
-	if (iResult == SOCKET_ERROR) cout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
+	if (iResult == SOCKET_ERROR)
+	{
+		cout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
+	}
 	iResult = shutdown(listenSocket, SD_BOTH);
 	dwError = WSAGetLastError();
-	if (iResult == SOCKET_ERROR) cout << "Server shutdown failed: " << FormatLastError(dwError, szError) << endl;
+	if (iResult == SOCKET_ERROR)
+	{
+		cout << "Server shutdown failed. " << FormatLastError(dwError, szError) << endl;
+		fout << "Server shutdown failed. " << FormatLastError(dwError, szError) << endl;
+	}
 
 	closesocket(clientSocket);
 	closesocket(listenSocket);
 	WSACleanup();
+	fout.close();
 
 	return 0;
 }
