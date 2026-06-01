@@ -1,3 +1,6 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // !WIN32_LEAN_AND_MEAN
@@ -18,6 +21,12 @@ using namespace std;
 #define BUFFER_LENGTH 1500
 #define MAX_CONNECTIONS 5
 
+SOCKET sockets[MAX_CONNECTIONS] = {};
+DWORD dwThreadIDs[MAX_CONNECTIONS] = {};
+HANDLE hThreads[MAX_CONNECTIONS] = {};
+
+VOID ClientHandle(SOCKET clientSocket);
+
 int main()
 {
 	setlocale(LC_ALL, "");
@@ -27,7 +36,7 @@ int main()
 	CHAR szError[256] = {};
 
 	WSADATA wsaData;
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	INT iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	dwError = WSAGetLastError();
 	if (iResult != 0)
 	{
@@ -84,9 +93,42 @@ int main()
 		return 0;
 	}
 
-	SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+	struct sockaddr_in clientAddr;
+	INT clientAddrlen = sizeof(clientAddr);
+	clientAddr.sin_family = AF_INET;
+	SOCKET clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrlen);
 	dwError = WSAGetLastError();
 	if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
+	else
+	{
+		CHAR* clientIP = inet_ntoa(clientAddr.sin_addr);
+		INT clientPort = ntohs(clientAddr.sin_port);
+		time_t now = time(nullptr);
+		struct tm timeinfo;
+		localtime_s(&timeinfo, &now);
+		CHAR timeStr[64];
+		sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+		cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+	}
+
+	ClientHandle(clientSocket);
+
+	//iResult = shutdown(listenSocket, SD_RECEIVE);
+	//dwError = WSAGetLastError();
+	//if (iResult == SOCKET_ERROR) cout << "Server shutdown failed: " << FormatLastError(dwError, szError) << endl;
+
+	closesocket(clientSocket);
+	closesocket(listenSocket);
+	WSACleanup();
+
+	return 0;
+}
+
+VOID ClientHandle(SOCKET clientSocket)
+{
+	INT iResult = 0;
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
 
 	CHAR recvBuffer[BUFFER_LENGTH] = {};
 	CHAR sendBuffer[BUFFER_LENGTH] = {};
@@ -94,6 +136,7 @@ int main()
 	do
 	{
 		iResult = recv(clientSocket, recvBuffer, BUFFER_LENGTH, 0);
+		recvBuffer[iResult] = '\0';
 		dwError = WSAGetLastError();
 		if (iResult > 0)
 		{
@@ -118,13 +161,4 @@ int main()
 	iResult = shutdown(clientSocket, SD_BOTH);
 	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR) cout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
-	iResult = shutdown(listenSocket, SD_BOTH);
-	dwError = WSAGetLastError();
-	if (iResult == SOCKET_ERROR) cout << "Server shutdown failed: " << FormatLastError(dwError, szError) << endl;
-
-	closesocket(clientSocket);
-	closesocket(listenSocket);
-	WSACleanup();
-
-	return 0;
 }

@@ -27,7 +27,7 @@ int main()
 	CHAR szError[256] = {};
 
 	WSADATA wsaData;
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	INT iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0)
 	{
 		cout << "WSAStartup failed: " << iResult << endl;
@@ -84,10 +84,13 @@ int main()
 		cout << "Bytes sent: " << iResult << endl;
 
 		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
+		recvBuffer[iResult] = '\0';
 		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
 		else if (iResult == 0) cout << "Connection closed" << endl;
 		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+		SetConsoleCP(1251);
 		cin.getline(sendBuffer, BUFFER_LENGTH);
+		SetConsoleCP(866);
 	} while (strcmp(sendBuffer, "exit") != 0);
 
 	iResult = shutdown(connectSocket, SD_BOTH);
