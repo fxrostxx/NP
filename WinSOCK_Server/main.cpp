@@ -25,6 +25,12 @@ SOCKET sockets[MAX_CONNECTIONS] = {};
 DWORD dwThreadIDs[MAX_CONNECTIONS] = {};
 HANDLE hThreads[MAX_CONNECTIONS] = {};
 
+struct ClientParameters
+{
+	SOCKET clientSocket;
+	addrinfo clientAddress;
+};
+
 VOID ClientHandle(SOCKET clientSocket);
 
 INT main()
@@ -133,6 +139,19 @@ INT main()
 
 VOID ClientHandle(SOCKET clientSocket)
 {
+	sockaddr_in clientAddress;
+	INT clientAddressLen = sizeof(clientAddress);
+	getpeername(clientSocket, (struct sockaddr*)&clientAddress, &clientAddressLen);
+
+	CHAR* clientIP = inet_ntoa(clientAddress.sin_addr);
+	INT clientPort = ntohs(clientAddress.sin_port);
+	time_t now = time(nullptr);
+	struct tm timeinfo;
+	localtime_s(&timeinfo, &now);
+	CHAR timeStr[64];
+	sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+	cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+
 	INT iResult = 0;
 	DWORD dwError = 0;
 	CHAR szError[256] = {};
