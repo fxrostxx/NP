@@ -27,7 +27,7 @@ HANDLE hThreads[MAX_CONNECTIONS] = {};
 
 VOID ClientHandle(SOCKET clientSocket);
 
-int main()
+INT main()
 {
 	setlocale(LC_ALL, "");
 
@@ -92,32 +92,39 @@ int main()
 		WSACleanup();
 		return 0;
 	}
-
-	struct sockaddr_in clientAddr;
-	INT clientAddrlen = sizeof(clientAddr);
-	clientAddr.sin_family = AF_INET;
-	SOCKET clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrlen);
-	dwError = WSAGetLastError();
-	if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
-	else
+	INT i = 0;
+	do
 	{
-		CHAR* clientIP = inet_ntoa(clientAddr.sin_addr);
-		INT clientPort = ntohs(clientAddr.sin_port);
-		time_t now = time(nullptr);
-		struct tm timeinfo;
-		localtime_s(&timeinfo, &now);
-		CHAR timeStr[64];
-		sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-		cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
-	}
-
-	ClientHandle(clientSocket);
+		struct sockaddr_in clientAddr;
+		INT clientAddrlen = sizeof(clientAddr);
+		clientAddr.sin_family = AF_INET;
+		SOCKET clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrlen);
+		dwError = WSAGetLastError();
+		if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
+		else
+		{
+			//ClientHandle(clientSocket);
+			if (i < MAX_CONNECTIONS)
+			{
+				sockets[i] = clientSocket;
+				hThreads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ClientHandle, (LPSTR)sockets[i], 0, &dwThreadIDs[i]);
+				++i;
+			}
+			CHAR* clientIP = inet_ntoa(clientAddr.sin_addr);
+			INT clientPort = ntohs(clientAddr.sin_port);
+			time_t now = time(nullptr);
+			struct tm timeinfo;
+			localtime_s(&timeinfo, &now);
+			CHAR timeStr[64];
+			sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+			cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+		}
+	} while (true);
 
 	//iResult = shutdown(listenSocket, SD_RECEIVE);
 	//dwError = WSAGetLastError();
 	//if (iResult == SOCKET_ERROR) cout << "Server shutdown failed: " << FormatLastError(dwError, szError) << endl;
 
-	closesocket(clientSocket);
 	closesocket(listenSocket);
 	WSACleanup();
 
@@ -161,4 +168,5 @@ VOID ClientHandle(SOCKET clientSocket)
 	iResult = shutdown(clientSocket, SD_BOTH);
 	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR) cout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
+	closesocket(clientSocket);
 }
