@@ -10,6 +10,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <FormatLastError.h>
+#include <Messages.h>
 
 using namespace std;
 
@@ -88,6 +89,11 @@ int main()
 		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
 		else if (iResult == 0) cout << "Connection closed" << endl;
 		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+		if (strcmp(recvBuffer, DECLINE_MSG) == 0)
+		{
+			system("pause");
+			break;
+		}
 		SetConsoleCP(1251);
 		cin.getline(sendBuffer, BUFFER_LENGTH);
 		SetConsoleCP(866);

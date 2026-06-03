@@ -11,6 +11,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <FormatLastError.h>
+#include <Messages.h>
 
 using namespace std;
 
@@ -19,7 +20,7 @@ using namespace std;
 
 #define PORT "25575"
 #define BUFFER_LENGTH 1500
-#define MAX_CONNECTIONS 5
+#define MAX_CONNECTIONS 3
 
 SOCKET sockets[MAX_CONNECTIONS] = {};
 DWORD dwThreadIDs[MAX_CONNECTIONS] = {};
@@ -109,27 +110,23 @@ INT main()
 		if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
 		else
 		{
-			//ClientHandle(clientSocket);
 			if (i < MAX_CONNECTIONS)
 			{
 				sockets[i] = clientSocket;
 				hThreads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ClientHandle, (LPSTR)sockets[i], 0, &dwThreadIDs[i]);
 				++i;
 			}
-			CHAR* clientIP = inet_ntoa(clientAddr.sin_addr);
-			INT clientPort = ntohs(clientAddr.sin_port);
-			time_t now = time(nullptr);
-			struct tm timeinfo;
-			localtime_s(&timeinfo, &now);
-			CHAR timeStr[64];
-			sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-			cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+			else
+			{
+				CHAR recvBuffer[BUFFER_LENGTH] = {};
+				iResult = recv(clientSocket, recvBuffer, BUFFER_LENGTH, NULL);
+				cout << recvBuffer << endl;
+				iResult = send(clientSocket, DECLINE_MSG, strlen(DECLINE_MSG), NULL);
+				shutdown(clientSocket, SD_BOTH);
+				closesocket(clientSocket);
+			}
 		}
 	} while (true);
-
-	//iResult = shutdown(listenSocket, SD_RECEIVE);
-	//dwError = WSAGetLastError();
-	//if (iResult == SOCKET_ERROR) cout << "Server shutdown failed: " << FormatLastError(dwError, szError) << endl;
 
 	closesocket(listenSocket);
 	WSACleanup();
@@ -143,6 +140,7 @@ VOID ClientHandle(SOCKET clientSocket)
 	INT clientAddressLen = sizeof(clientAddress);
 	getpeername(clientSocket, (struct sockaddr*)&clientAddress, &clientAddressLen);
 
+	CHAR szClientAddress[64] = {};
 	CHAR* clientIP = inet_ntoa(clientAddress.sin_addr);
 	INT clientPort = ntohs(clientAddress.sin_port);
 	time_t now = time(nullptr);
@@ -150,7 +148,8 @@ VOID ClientHandle(SOCKET clientSocket)
 	localtime_s(&timeinfo, &now);
 	CHAR timeStr[64];
 	sprintf(timeStr, "%i-%02i-%02i %02i:%02i:%02i", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-	cout << timeStr << " Accepted client from " << clientIP << ":" << clientPort << endl;
+	sprintf(szClientAddress, "%s %s:%d", timeStr, clientIP, clientPort);
+	cout << szClientAddress << endl;
 
 	INT iResult = 0;
 	DWORD dwError = 0;
@@ -166,7 +165,7 @@ VOID ClientHandle(SOCKET clientSocket)
 		dwError = WSAGetLastError();
 		if (iResult > 0)
 		{
-			cout << recvBuffer << " (" << strlen(recvBuffer) << " bytes)" << endl;
+			cout << szClientAddress << " # " << recvBuffer << " (" << strlen(recvBuffer) << " bytes)" << endl;
 			iSendResult = send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
 			dwError = WSAGetLastError();
 			if (iSendResult == SOCKET_ERROR)
