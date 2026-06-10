@@ -26,6 +26,8 @@ SOCKET sockets[MAX_CONNECTIONS] = {};
 DWORD dwThreadIDs[MAX_CONNECTIONS] = {};
 HANDLE hThreads[MAX_CONNECTIONS] = {};
 
+INT gActiveClients = 0;
+
 struct ClientParameters
 {
 	SOCKET clientSocket;
@@ -33,6 +35,8 @@ struct ClientParameters
 };
 
 VOID ClientHandle(SOCKET clientSocket);
+//VOID Release(SOCKET clientSocket);
+VOID ShowActiveClients();
 
 INT main()
 {
@@ -99,9 +103,9 @@ INT main()
 		WSACleanup();
 		return 0;
 	}
-	INT i = 0;
 	do
 	{
+		ShowActiveClients();
 		struct sockaddr_in clientAddr;
 		INT clientAddrlen = sizeof(clientAddr);
 		clientAddr.sin_family = AF_INET;
@@ -110,11 +114,11 @@ INT main()
 		if (clientSocket == INVALID_SOCKET) cout << "Accept failed: " << FormatLastError(dwError, szError) << endl;
 		else
 		{
-			if (i < MAX_CONNECTIONS)
+			if (gActiveClients < MAX_CONNECTIONS)
 			{
-				sockets[i] = clientSocket;
-				hThreads[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ClientHandle, (LPSTR)sockets[i], 0, &dwThreadIDs[i]);
-				++i;
+				sockets[gActiveClients] = clientSocket;
+				hThreads[gActiveClients] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ClientHandle, (LPSTR)sockets[gActiveClients], 0, &dwThreadIDs[gActiveClients]);
+				++gActiveClients;
 			}
 			else
 			{
@@ -128,10 +132,34 @@ INT main()
 		}
 	} while (true);
 
+	WaitForMultipleObjects(MAX_CONNECTIONS, hThreads, TRUE, INFINITE);
+
 	closesocket(listenSocket);
 	WSACleanup();
 
 	return 0;
+}
+
+INT GetSlotIndex(DWORD dwID)
+{
+	for (int i = 0; i < MAX_CONNECTIONS; ++i)
+	{
+		if (dwThreadIDs[i] == dwID) return i;
+	}
+}
+
+VOID Shift(INT start)
+{
+	for (int i = 0; i < MAX_CONNECTIONS; ++i)
+	{
+		sockets[i] = sockets[i + 1];
+		dwThreadIDs[i] = dwThreadIDs[i + 1];
+		hThreads[i] = hThreads[i + 1];
+	}
+	sockets[MAX_CONNECTIONS - 1] = NULL;
+	dwThreadIDs[MAX_CONNECTIONS - 1] = NULL;
+	hThreads[MAX_CONNECTIONS - 1] = NULL;
+	--gActiveClients;
 }
 
 VOID ClientHandle(SOCKET clientSocket)
@@ -183,8 +211,45 @@ VOID ClientHandle(SOCKET clientSocket)
 		}
 	} while (iResult > 0);
 
+	DWORD dwID = GetCurrentThreadId();
+	Shift(GetSlotIndex(dwID));
+	cout << szClientAddress << " left" << endl;
+
 	iResult = shutdown(clientSocket, SD_BOTH);
 	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR) cout << "Client shutdown failed. " << FormatLastError(dwError, szError) << endl;
 	closesocket(clientSocket);
+	ShowActiveClients();
+	ExitThread(0);
+	//Release(clientSocket);
+}
+
+//VOID Release(SOCKET clientSocket)
+//{
+//	for (int i = 0; i < MAX_CONNECTIONS; ++i)
+//	{
+//		if (clientSocket == sockets[i])
+//		{
+//			sockets[i] = NULL;
+//			for (int j = i; sockets[j] || j < MAX_CONNECTIONS - 1; ++j)
+//			{
+//				sockets[j] = sockets[j + 1];
+//				dwThreadIDs[j] = dwThreadIDs[j + 1];
+//				hThreads[j] = hThreads[j + 1];
+//			}
+//		}
+//	}
+//	--g_ActiveClients;
+//	ShowActiveClients();
+//}
+
+VOID ShowActiveClients()
+{
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO info;
+	GetConsoleScreenBufferInfo(hConsole, &info);
+	COORD cursor = { 70, 1 };
+	SetConsoleCursorPosition(hConsole, cursor);
+	cout << "Number of connected clients: " << gActiveClients << endl;
+	SetConsoleCursorPosition(hConsole, info.dwCursorPosition);
 }
