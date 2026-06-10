@@ -37,6 +37,7 @@ struct ClientParameters
 VOID ClientHandle(SOCKET clientSocket);
 //VOID Release(SOCKET clientSocket);
 VOID ShowActiveClients();
+VOID Broadcast(CHAR szMessage[], DWORD dwID);
 
 INT main()
 {
@@ -194,7 +195,8 @@ VOID ClientHandle(SOCKET clientSocket)
 		if (iResult > 0)
 		{
 			cout << szClientAddress << " # " << recvBuffer << " (" << strlen(recvBuffer) << " bytes)" << endl;
-			iSendResult = send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
+			Broadcast(recvBuffer, GetCurrentThreadId());
+			//iSendResult = send(clientSocket, recvBuffer, strlen(recvBuffer), 0);
 			dwError = WSAGetLastError();
 			if (iSendResult == SOCKET_ERROR)
 			{
@@ -252,4 +254,12 @@ VOID ShowActiveClients()
 	SetConsoleCursorPosition(hConsole, cursor);
 	cout << "Number of connected clients: " << gActiveClients << endl;
 	SetConsoleCursorPosition(hConsole, info.dwCursorPosition);
+}
+
+VOID Broadcast(CHAR szMessage[], DWORD dwID)
+{
+	for (INT i = 0; i < gActiveClients; ++i)
+	{
+		if (dwThreadIDs[i] != dwID) send(sockets[i], szMessage, strlen(szMessage), 0);
+	}
 }

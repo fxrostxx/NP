@@ -20,6 +20,8 @@ using namespace std;
 #define PORT "25575"
 #define BUFFER_LENGTH 1500
 
+VOID Receive(SOCKET connectSocket);
+
 int main()
 {
 	setlocale(LC_ALL, "");
@@ -69,6 +71,9 @@ int main()
 		return 0;
 	}
 
+	DWORD dwReceiveThreadID = 0;
+	HANDLE hReceiveThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Receive, (LPVOID)connectSocket, 0, &dwReceiveThreadID);
+
 	CHAR sendBuffer[BUFFER_LENGTH] = "Hello Server";
 	CHAR recvBuffer[BUFFER_LENGTH] = {};
 	do
@@ -84,16 +89,6 @@ int main()
 		}
 		cout << "Bytes sent: " << iResult << endl;
 
-		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
-		recvBuffer[iResult] = '\0';
-		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
-		else if (iResult == 0) cout << "Connection closed" << endl;
-		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
-		if (strcmp(recvBuffer, DECLINE_MSG) == 0)
-		{
-			system("pause");
-			break;
-		}
 		SetConsoleCP(1251);
 		cin.getline(sendBuffer, BUFFER_LENGTH);
 		SetConsoleCP(866);
@@ -107,4 +102,23 @@ int main()
 	WSACleanup();
 
 	return 0;
+}
+
+VOID Receive(SOCKET connectSocket)
+{
+	INT iResult = 0;
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
+	CHAR recvBuffer[BUFFER_LENGTH] = {};
+
+	do
+	{
+		//ZeroMemory(recvBuffer, sizeof(recvBuffer));
+		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
+		recvBuffer[iResult] = '\0';
+		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
+		//else if (iResult == 0) cout << "Connection closed" << endl;
+		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+	} while (true);
+	if (strcmp(recvBuffer, DECLINE_MSG) == 0) system("pause");
 }
