@@ -117,8 +117,12 @@ VOID Receive(SOCKET connectSocket)
 		iResult = recv(connectSocket, recvBuffer, BUFFER_LENGTH, 0);
 		recvBuffer[iResult] = '\0';
 		if (iResult > 0) cout << recvBuffer << " (" << iResult << " bytes)" << endl;
-		//else if (iResult == 0) cout << "Connection closed" << endl;
-		else cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
-	} while (true);
+		else if (iResult == 0) cout << "Connection closed" << endl;
+		else
+		{
+			cout << "Receive failed. " << FormatLastError(WSAGetLastError(), szError) << endl;
+			break;
+		}
+	} while (strcmp(recvBuffer, DECLINE_MSG) != 0);
 	if (strcmp(recvBuffer, DECLINE_MSG) == 0) system("pause");
 }
